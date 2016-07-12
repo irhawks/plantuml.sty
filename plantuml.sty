@@ -1,0 +1,164 @@
+%%% Modified from abc.sty
+\NeedsTeXFormat{LaTeX2e}[1999/12/01]
+\ProvidesPackage{plantuml}[2016/07/09 v2.0 添加UML基本绘制命令]
+
+%%%%--------------------------------------------------------------------
+%%% 首先声明各种选项并执行有关选项
+\newif\ifplantuml@shellescape
+\newif\ifplantuml@generate
+\newif\ifplantuml@warning
+\newif\ifplantuml@saveall
+%%% 声明Options
+\DeclareOption{noshellescape}{\plantuml@shellescapefalse\plantuml@warningtrue
+  \plantuml@savealltrue}
+\DeclareOption{shellescape}{\plantuml@shellescapetrue}
+\DeclareOption{nogenerate}{\plantuml@generatefalse}
+\DeclareOption{generate}{\plantuml@generatetrue}
+\DeclareOption{nosaveall}{\plantuml@saveallfalse}
+\DeclareOption{saveall}{\plantuml@savealltrue}
+
+\ExecuteOptions{generate,shellescape,nosaveall}
+\ProcessOptions\relax
+
+%%%%--------------------------------------------------------------------
+
+%%% 处理完选项之后定义各个选项
+
+\RequirePackage{verbatim}
+\RequirePackage{keyval}
+\RequirePackage{graphicx}
+\RequirePackage{xstring}
+\newif\ifplantuml@unprocessedfiles
+\newcounter{plantuml@count}
+
+\newcommand{\plantuml@cmd}{plantuml}       % virtually no choice
+\newcommand{\plantuml@parm}{-tpng}       % -O= MUST stay
+
+%%% Plantuml的输入ext与输出ext
+\def\plantuml@ext{.puml}
+\newcommand{\plantuml@outext}{png}
+
+\def\normalplantumloutputfile{out-plantuml}
+\def\plantuml@packagename{plantuml}
+
+
+\def\plantuml@tempfile{\normalplantumloutputfile}
+\def\plantuml@opt{}
+\let\plantuml@postopt\@empty
+
+
+\newif\ifplantuml@center
+\plantuml@centertrue
+\newcommand{\plantumlwidth}{\linewidth}  % only fractions of \linewidth
+
+%%% 主要是定义plantumlipnut输入
+\newwrite\plantuml@out
+\def\plantuml@startgen{%
+    \@bsphack
+  \immediate\openout\plantuml@out\plantuml@tempfile\plantuml@ext
+  \let\do\@makeother\dospecials
+  \catcode`\^^M\active \catcode`\^^I=12
+  \def\verbatim@processline{%
+      \immediate\write\plantuml@out
+    {\the\verbatim@line}}%
+  \verbatim@start}
+\def\plantuml@finishgen{%
+    \immediate\closeout\plantuml@out
+  \@esphack
+  \plantuml@process
+}
+
+\def\plantuml@doshellcommand{%
+    \immediate\write18{%
+      \plantuml@cmd\space
+      \plantuml@parm\space
+      \plantuml@opt\space
+      \plantuml@tempfile\plantuml@ext\space
+    \ifx\plantuml@postopt\@empty
+    \else\space\plantuml@postopt\fi}%
+}
+
+\AtEndDocument{%
+    \ifplantuml@warning\ifplantuml@unprocessedfiles
+    \PackageWarningNoLine{\plantuml@packagename}{%
+        \ifplantuml@shellescape
+        You have set the `shellescape' option, but you ran%
+        \MessageBreak
+        (pdf)latex without the `-shell-escape' command line%
+        \MessageBreak
+        option. Fix it either with the `noshellescape' option%
+        \MessageBreak
+        in your document or the correct call of (pdf)latex%
+      \else
+        Remember to generate the [eps,pdf] files before compiling%
+        \MessageBreak
+       again. Use the file \plantuml@tempfile.sh for a list or as a script%
+      \fi}%
+  \fi\fi}
+
+%% if plantuml @ shellescape
+\let\plantuml@process\plantuml@doshellcommand
+
+\ifplantuml@generate
+  \let\plantuml@start\plantuml@startgen
+  \let\plantuml@finish\plantuml@finishgen
+\else
+  \let\plantuml@start\comment
+  \let\plantuml@finish\endcomment
+\fi
+
+%%% 添加编号
+\def\plantuml{\@makeother\%\@ifnextchar[\plantuml@grab{\plantuml@grab[]}}
+\define@key{plantuml}{name}[]{%
+    \if!#1!\stepcounter{plantuml@count}%
+    \edef\plantuml@tempfile{\normalplantumloutputfile-\@arabic\c@plantuml@count}%
+  \else
+    \def\plantuml@tempfile{#1}%
+  \fi
+}
+\define@key{plantuml}{options}{\def\plantuml@opt{#1}}
+\define@key{plantuml}{postoptions}{\def\plantuml@postopt{#1}}
+\define@key{plantuml}{program}{\def\plantuml@cmd{#1}\let\plantuml@parm\@empty}
+\define@key{plantuml}{width}{\def\plantuml@width{#1}}
+\define@key{plantuml}{center}[true]{\csname plantuml@center#1\endcsname}
+\define@key{plantuml}{extension}{\def\plantuml@ext{.#1}}
+
+\def\plantuml@grab[#1]{\let\plantuml@width=\plantumlwidth
+  \ifplantuml@saveall
+    \setkeys{plantuml}{name,#1}%
+  \else
+    \setkeys{plantuml}{#1}%
+  \fi\plantuml@start}
+
+%%% 结束的时候插入相应的pdf文件图形
+\def\endplantuml{%
+    \plantuml@finish
+\trivlist\item[]\ifplantuml@center\centering\fi
+    %\def\myopt{\IfStrEq{\plantuml@width}{}{}{width=\plantuml@width}}
+    \IfFileExists{\plantuml@tempfile.\plantuml@outext}
+    {\includegraphics[width=\plantuml@width]{\plantuml@tempfile.\plantuml@outext}}%
+    {\global\plantuml@warningtrue\fbox{\plantuml@tempfile}%
+     \global\plantuml@unprocessedfilestrue}%
+  \endtrivlist
+}
+
+%%% 定义abcinput输入
+\def\plantumlinput{\@ifnextchar[\plantuml@grabinput{\plantuml@grabinput[]}}
+\def\plantuml@grabinput[#1]#2{%
+  \let\plantuml@width=\plantumlwidth\setkeys{plantuml}{#1}%
+  \begingroup\def\plantuml@tempfile{#2}%
+  \IfFileExists{\plantuml@tempfile\plantuml@ext}
+  {%
+    \plantuml@process
+    \begin{center}
+        \IfFileExists{\plantuml@tempfile.\plantuml@outext}
+        {\includegraphics[width=\plantuml@width]{\plantuml@tempfile.\plantuml@outext}}%
+        {\fbox{\plantuml@tempfile}}%
+    \end{center}%
+  \endgroup
+  }
+  {\PackageWarning{\plantuml@packagename}{No file \plantuml@tempfile\plantuml@ext\space found}}%
+}
+\endinput
+%%
+%% End of file `plantuml.sty'.

@@ -1,0 +1,37 @@
+\documentclass{ctexart}
+\usepackage[margin=1in]{geometry}
+\usepackage{lipsum}
+
+\usepackage[saveall]{plantuml}
+
+\title{主测试文件}
+
+\begin{document}
+
+\lipsum[1]
+
+
+\begin{plantuml}[width=0.4\textwidth]
+@startuml
+skinparam dpi 300
+class 构件
+构件 "1" --> "1..N" 服务
+构件 "1" --> "1..N" 接口
+接口 "1" -> "1" 服务 : ?
+@enduml
+\end{plantuml}
+
+\lipsum[2]
+
+\begin{plantuml}
+@startuml
+class 构件
+构件 "1" --> "1..N" 服务X
+构件 "1" --> "1..N" 接口
+接口 "1" -> "1" 服务 : ?
+@enduml
+\end{plantuml}
+
+\lipsum[3]
+
+\end{document}
