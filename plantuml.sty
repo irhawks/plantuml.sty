@@ -49,13 +49,15 @@
 
 \newif\ifplantuml@center
 \plantuml@centertrue
-\newcommand{\plantumlwidth}{\linewidth}  % only fractions of \linewidth
+\newcommand{\plantumlwidth}{0.4\linewidth}  % only fractions of \linewidth
 
 %%% 主要是定义plantumlipnut输入
 \newwrite\plantuml@out
 \def\plantuml@startgen{%
     \@bsphack
   \immediate\openout\plantuml@out\plantuml@tempfile\plantuml@ext
+  \immediate\write\plantuml@out{@startuml}
+  \immediate\write\plantuml@out{skinparam dpi 300}
   \let\do\@makeother\dospecials
   \catcode`\^^M\active \catcode`\^^I=12
   \def\verbatim@processline{%
@@ -63,6 +65,7 @@
     {\the\verbatim@line}}%
   \verbatim@start}
 \def\plantuml@finishgen{%
+    \immediate\write\plantuml@out{@enduml}
     \immediate\closeout\plantuml@out
   \@esphack
   \plantuml@process
